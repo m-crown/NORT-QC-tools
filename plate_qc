@@ -33,11 +33,12 @@ def main():
     plate_qc = pd.merge(qc, sample_sheet, how = "outer", left_on = "sample_name", right_on = "COG-UK_identifier", indicator = "merged")
     
     if len(plate_qc.loc[plate_qc["merged"] == "both"]) != len(qc):
-        print("Merging failed, the following QC sample_ids could not be matched to IDs in the sample sheet (sample_id from QC, COG-UK_identifier from sample sheet, merge = left_only is only in QC):")
+        print("FATAL: Merging failed, the following QC sample_ids could not be matched to IDs in the sample sheet (sample_id from QC, COG-UK_identifier from sample sheet, merge = left_only is only in QC):")
         print(plate_qc.loc[plate_qc["merged"] == "left_only", ["sample_name", "COG-UK_identifier", "merged"]])
         return 1 #if there are left_only items then we need to stop and check, right only we just print below as these are seq fails. 
-    print("\nSample sheet and QC file merged, the following IDs were not matched and will be marked as failed to sequence if NORT IDs (is this correct?):\n")
-    print(plate_qc.loc[plate_qc["merged"] == "right_only", ["sample_name", "COG-UK_identifier", "merged"]], "\n")
+    if len(plate_qc.loc[plate_qc["merged"] == "right_only"]) != 0:
+        print("\nWARNING: Sample sheet and QC file merged, the following IDs were not matched and will be marked as failed to sequence if NORT IDs (is this correct?):\n")
+        print(plate_qc.loc[plate_qc["merged"] == "right_only", ["sample_name", "COG-UK_identifier", "merged"]], "\n")
 
     plate_qc["row"] = plate_qc["RT-strip"].str.extract(r'([A-Z])[0-9][0-9]').astype(str)
     plate_qc["row"] = plate_qc["row"].replace({'A':1, 'B':2, 'C':3, 'D':4, 'E':5, 'F':6, 'G':7, 'H':8})
@@ -52,10 +53,20 @@ def main():
     plate_qc.sort_values(axis = 0, by = "NORT PLATE", inplace = True)
     seq_fails = len(plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna())])
 
-    neg_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"),["RNA plate", "sample_name", "num_aligned_reads"]]
+    neg_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"),["RNA plate", "COG-UK_identifier", "num_aligned_reads"]]
     neg_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
     print("\nNEG STATS\n")
     print(neg_stats)
+
+    pos_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"),["RNA plate", "COG-UK_identifier", "num_aligned_reads"]]
+    pos_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
+    print("\nPOS STATS\n")
+    print(pos_stats)
+
+    blank_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK"),["RNA plate", "COG-UK_identifier", "num_aligned_reads"]]
+    blank_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
+    print("\nBLANK STATS\n")
+    print(blank_stats)
 
     plate_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT"),["RNA plate", "qc_pass"]].groupby( [ "RNA plate", "qc_pass"], dropna = False ).size().to_frame("# Samples").reset_index()
     plate_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
@@ -72,8 +83,9 @@ def main():
                               line=dict(width=2,
                                         color='DarkSlateGrey')),
                   selector=dict(mode='markers'))
-    fig.show()
     fig.write_html(f'{args.experiment}.html')
+
+    print(f'\nSaved PNG QC plate maps to:    {args.experiment}.png\nSaved interactive HTML PNG QC plate maps to:  {args.experiment}.html')
 
 if __name__ == "__main__":
     main()
