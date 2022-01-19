@@ -1,4 +1,4 @@
-name: NORT-QC-tools_test
+name: NORT-QC-tools
 
 channels:
   - conda-forge
