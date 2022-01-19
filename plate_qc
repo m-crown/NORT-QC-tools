@@ -48,8 +48,8 @@ def main():
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"] == True), "qc_pass"] = "QC Pass"
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"] == False), "qc_pass"] = "QC Fail"
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna()), "qc_pass"] = "Seq Fail"
-    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"), "qc_pass"] = "NEG"
-    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"), "qc_pass"] = "POS"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"), "qc_pass"] = "NEG"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"), "qc_pass"] = "POS"
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK"), "qc_pass"] = "Blank"
     plate_qc["num_aligned_reads"] = plate_qc["num_aligned_reads"].fillna(0)
     plate_qc.sort_values(axis = 0, by = "NORT PLATE", inplace = True)
@@ -76,15 +76,58 @@ def main():
     print(plate_stats)
     xlabs = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
     ylabs = ["A", "B", "C", "D", "E", "F", "G", "H"]
-    fig = px.scatter(plate_qc, x = "col", y = "row", color = "qc_pass",color_discrete_map = {"QC Pass": 'green', "Seq Fail": 'red', "QC Fail": 'orange', "NEG": "coral", "POS": "lightcoral", 'Blank' : "grey"},facet_col="NORT PLATE",facet_col_wrap=4, hover_data={'NORT PLATE': True, 'COG-UK_identifier': True,'num_aligned_reads': True, 'row' : False, 'col' : False})
+    fig = px.scatter(
+        plate_qc, 
+        x = "col", 
+        y = "row", 
+        color = "qc_pass",
+        color_discrete_map = {"QC Pass": 'green', "Seq Fail": 'red', "QC Fail": 'orange', "NEG": "coral", "POS": "lightcoral", 'Blank' : "grey"},
+        facet_col="NORT PLATE",
+        facet_col_wrap=4, 
+        hover_data={'NORT PLATE': True, 'COG-UK_identifier': True,'num_aligned_reads': True, 'row' : False, 'col' : False},) 
+        # color=(
+        #     (plate_qc.COG-UK_identifier.str.match("^NEG") < df.y) & (df.y < df.upper_limit)).astype('int'),
+        #     colorscale=[[0, 'red'], [1, 'green']])
+    fig.update_layout(
+        title={
+            'text': args.experiment,
+            'x' : 0.5,
+            'font' : {"size" : 20},
+            'xanchor': 'center',
+            'yanchor': 'top'},
+        paper_bgcolor='white',
+        plot_bgcolor='white'
+        )
     fig.update_xaxes(range=[0, 13], tickmode = 'array', tickvals = list(range(1, 13)), ticktext = xlabs, title = None)
     fig.update_yaxes(range=[0, 9], autorange = "reversed", tickmode = 'array', tickvals = list(range(1, 9)), ticktext = ylabs, title = None)
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-    fig.write_image(f'{args.experiment}.png')
-    fig.update_traces(marker=dict(size=12,
-                              line=dict(width=2,
-                                        color='DarkSlateGrey')),
-                  selector=dict(mode='markers'))
+    fig.update_traces(
+        marker=dict(
+            size=16,
+            line=dict(
+            width=2,
+            color='DarkSlateGrey')),
+        selector=dict(mode='markers'))
+
+    # Adds a rectangle to all facets, adapted from : https://chart-studio.plotly.com/~empet/14945/shapes-that-are-filled-rectangle/#/
+    x0 = 0.5
+    y0 = 0.5
+    x1 = 12.5
+    y1 = 8.5
+    h = 0.2
+    rounded_bottom_left = f' M {x0+h}, {y0} Q {x0}, {y0} {x0}, {y0+h}'
+    rounded_top_left = f' L {x0}, {y1-h} Q {x0}, {y1} {x0+h}, {y1}'
+    rounded_top_right = f' L {x1-h}, {y1} Q {x1}, {y1} {x1}, {y1-h}'
+    rounded_bottom_right = f' L {x1}, {y0+h} Q {x1}, {y0} {x1-h}, {y0}Z'
+    path = rounded_bottom_left + rounded_top_left+ rounded_top_right+rounded_bottom_right
+    
+    fig.add_shape(
+        dict(type="path", path = path, line_color="black",
+                          layer='above', 
+                          line=dict(color='rgba(128, 0, 128, 0.7)', width=0.8)), row="all", col="all")
+
+                          
+    fig.write_image(f'{args.experiment}.png', width=1980, height=1080,scale=1)
     fig.write_html(f'{args.experiment}.html')
 
     print(f'\nSaved PNG QC plate maps to:    {args.experiment}.png\nSaved interactive HTML PNG QC plate maps to:  {args.experiment}.html')
