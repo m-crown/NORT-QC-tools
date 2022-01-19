@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import pandas as pd
+import argparse
+from pathlib import Path
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.offline as offline
+from itertools import product
+from shutil import copyfile
+
+
+#need to pip install -U kaleido
+
+def main():
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('plate', metavar='NXT87_map.csv', type=str,
+        help='samplesheet') #ADD A DEFAULT FOR THIS 
+    parser.add_argument('qc', metavar='NXT87.qc.csv', type=str,
+        help='qc filename') #ADD A DEFAULT FOR THIS
+    parser.add_argument('experiment', metavar='stats/', type=str,
+        help='experiment') #ADD A DEFAULT FOR THIS
+    parser.add_argument('--option', metavar='id_files', type=str,
+        help='make id files per plate') #ADD A DEFAULT FOR THIS        
+    args = parser.parse_args()
+
+    print(f'''
+    NORT-QC Tools v0.1
+    Matt Crown, 2022
+    ########################################
+    ''')
+
+    sample_sheet = pd.read_csv(f'{args.plate}')
+    qc = pd.read_csv(f'{args.qc}')
+    if args.option == "id_files":
+        for plate in sample_sheet["NORT PLATE"].unique():
+            sample_sheet.loc[sample_sheet["NORT PLATE"] == plate, "COG-UK_identifier"].to_csv(f'{plate}.csv', index = False, header = False)
+ 
+    sample_sheet[["Lab ID","COG-UK_identifier"]] = sample_sheet[["Lab ID","COG-UK_identifier"]].replace("_", "-", regex = True)
+    qc[["sample_name"]] = qc[["sample_name"]].replace("_", "-", regex = True)
+    plate_qc = pd.merge(qc, sample_sheet, how = "outer", left_on = "sample_name", right_on = "COG-UK_identifier", indicator = "merged")
+    
+    if len(plate_qc.loc[plate_qc["merged"] == "both"]) != len(qc):
+        print("Merging failed, the following QC sample_ids could not be matched to IDs in the sample sheet (sample_id from QC, COG-UK_identifier from sample sheet, merge = left_only is only in QC):")
+        print(plate_qc.loc[plate_qc["merged"] == "left_only", ["sample_name", "COG-UK_identifier", "merged"]])
+        return 1 #if there are left_only items then we need to stop and check, right only we just print below as these are seq fails. 
+    print("\nSample sheet and QC file merged, the following IDs were not matched and will be marked as failed to sequence if NORT IDs (is this correct?):\n")
+    print(plate_qc.loc[plate_qc["merged"] == "right_only", ["sample_name", "COG-UK_identifier", "merged"]], "\n")
+
+    plate_qc["row"] = plate_qc["RT-strip"].str.extract(r'([A-Z])[0-9][0-9]').astype(str)
+    plate_qc["row"] = plate_qc["row"].replace({'A':1, 'B':2, 'C':3, 'D':4, 'E':5, 'F':6, 'G':7, 'H':8})
+    plate_qc["col"] = plate_qc["RT-strip"].str.extract(r'[A-Z]([0-9][0-9])').astype(int)
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"] == True), "qc_pass"] = "QC Pass"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"] == False), "qc_pass"] = "QC Fail"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna()), "qc_pass"] = "Seq Fail"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"), "qc_pass"] = "NEG"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"), "qc_pass"] = "POS"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK"), "qc_pass"] = "Blank"
+    plate_qc["num_aligned_reads"] = plate_qc["num_aligned_reads"].fillna(0)
+    plate_qc.sort_values(axis = 0, by = "NORT PLATE", inplace = True)
+    seq_fails = len(plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna())])
+
+    neg_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"),["RNA plate", "sample_name", "num_aligned_reads"]]
+    neg_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
+    print("\nNEG STATS\n")
+    print(neg_stats)
+
+    plate_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT"),["RNA plate", "qc_pass"]].groupby( [ "RNA plate", "qc_pass"], dropna = False ).size().to_frame("# Samples").reset_index()
+    plate_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
+    print("\nPLATE PASS FAIL STATS\n")
+    print(plate_stats)
+    xlabs = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
+    ylabs = ["A", "B", "C", "D", "E", "F", "G", "H"]
+    fig = px.scatter(plate_qc, x = "col", y = "row", color = "qc_pass",color_discrete_map = {"QC Pass": 'green', "Seq Fail": 'red', "QC Fail": 'orange', "NEG": "coral", "POS": "lightcoral", 'Blank' : "grey"},facet_col="NORT PLATE",facet_col_wrap=4, hover_data={'NORT PLATE': True, 'COG-UK_identifier': True,'num_aligned_reads': True, 'row' : False, 'col' : False})
+    fig.update_xaxes(range=[0, 13], tickmode = 'array', tickvals = list(range(1, 13)), ticktext = xlabs, title = None)
+    fig.update_yaxes(range=[0, 9], autorange = "reversed", tickmode = 'array', tickvals = list(range(1, 9)), ticktext = ylabs, title = None)
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+    fig.write_image(f'{args.experiment}.png')
+    fig.update_traces(marker=dict(size=12,
+                              line=dict(width=2,
+                                        color='DarkSlateGrey')),
+                  selector=dict(mode='markers'))
+    fig.show()
+    fig.write_html(f'{args.experiment}.html')
+
+if __name__ == "__main__":
+    main()
