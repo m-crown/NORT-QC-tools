@@ -2,17 +2,7 @@
 
 import pandas as pd
 import argparse
-from pathlib import Path
-import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.offline as offline
-from itertools import product
-from shutil import copyfile
-
-
-#need to pip install -U kaleido
 
 def main():
     parser = argparse.ArgumentParser(description='')
