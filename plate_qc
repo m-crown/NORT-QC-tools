@@ -84,7 +84,7 @@ def main():
         color_discrete_map = {"QC Pass": 'green', "Seq Fail": 'red', "QC Fail": 'orange', "NEG": "coral", "POS": "lightcoral", 'Blank' : "grey"},
         facet_col="NORT PLATE",
         facet_col_wrap=4, 
-        hover_data={'NORT PLATE': True, 'COG-UK_identifier': True,'num_aligned_reads': True, 'row' : False, 'col' : False},) 
+        hover_data={'NORT PLATE': True, 'COG-UK_identifier': True,'num_aligned_reads': True, 'Indexes used' : True, 'row' : False, 'col' : False},) 
         # color=(
         #     (plate_qc.COG-UK_identifier.str.match("^NEG") < df.y) & (df.y < df.upper_limit)).astype('int'),
         #     colorscale=[[0, 'red'], [1, 'green']])
