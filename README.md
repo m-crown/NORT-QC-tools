@@ -3,14 +3,19 @@
 To install: 
 
 `git clone https://github.com/m-crown/NORT-QC-tools.git`
+
 `cd NORT-QC-tools`
+
 `conda env create -f environment.yml`
+
 `conda activate NORT-QC-tools`
+
 `cp plate_qc $CONDA_PREFIX/bin`
 
 To run:
 
 `conda activate NORT-QC-tools`
+
 `plate_qc sample_sheet.csv qc.csv experiment_name`
 
 Example CLI outputs:
