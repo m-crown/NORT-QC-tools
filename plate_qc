@@ -27,6 +27,8 @@ def main():
     if args.option == "id_files":
         for plate in sample_sheet["NORT PLATE"].unique():
             sample_sheet.loc[sample_sheet["NORT PLATE"] == plate, "COG-UK_identifier"].to_csv(f'{plate}.csv', index = False, header = False)
+            print(f'Saved {plate} IDs to: {plate}.csv')
+        return 1
  
     sample_sheet[["Lab ID","COG-UK_identifier"]] = sample_sheet[["Lab ID","COG-UK_identifier"]].replace("_", "-", regex = True)
     qc[["sample_name"]] = qc[["sample_name"]].replace("_", "-", regex = True)
