@@ -55,25 +55,22 @@ def main():
     plate_qc.sort_values(axis = 0, by = "NORT PLATE", inplace = True)
     seq_fails = len(plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna())])
 
-    neg_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"),["RNA plate", "COG-UK_identifier", "num_aligned_reads"]]
+    neg_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"),["RNA plate", "Lab ID", "COG-UK_identifier", "num_aligned_reads"]]
     neg_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
-    print("\nNEG STATS\n")
-    print(neg_stats)
+    neg_stats.to_csv(f'{args.experiment}_neg_stats.csv')
 
-    pos_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"),["RNA plate", "COG-UK_identifier", "num_aligned_reads"]]
+    pos_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"),["RNA plate", "Lab ID", "COG-UK_identifier", "num_aligned_reads"]]
     pos_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
-    print("\nPOS STATS\n")
-    print(pos_stats)
+    pos_stats.to_csv(f'{args.experiment}_pos_stats.csv')
 
-    blank_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK"),["RNA plate", "COG-UK_identifier", "num_aligned_reads"]]
+    blank_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK"),["RNA plate", "Lab ID", "COG-UK_identifier", "num_aligned_reads"]]
     blank_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
-    print("\nBLANK STATS\n")
-    print(blank_stats)
+    blank_stats.to_csv(f'{args.experiment}_blank_stats.csv')
 
     plate_stats = plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT"),["RNA plate", "qc_pass"]].groupby( [ "RNA plate", "qc_pass"], dropna = False ).size().to_frame("# Samples").reset_index()
     plate_stats.rename(columns = {"qc_pass": "QC"}, inplace = True)
-    print("\nPLATE PASS FAIL STATS\n")
-    print(plate_stats)
+    plate_stats.to_csv(f'{args.experiment}_plate_stats.csv')
+
     xlabs = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
     ylabs = ["A", "B", "C", "D", "E", "F", "G", "H"]
     fig = px.scatter(
@@ -84,7 +81,7 @@ def main():
         color_discrete_map = {"QC Pass": 'green', "Seq Fail": 'red', "QC Fail": 'orange', "NEG": "#0000ff", "POS": "#00ffff", 'Blank' : "grey"},
         facet_col="NORT PLATE",
         facet_col_wrap=4, 
-        hover_data={'NORT PLATE': True, 'COG-UK_identifier': True,'num_aligned_reads': True, 'Indexes used' : True, 'row' : False, 'col' : False},
+        hover_data={'NORT PLATE': True, 'COG-UK_identifier': True, 'Lab ID': True, 'num_aligned_reads': True, 'Indexes used' : True, 'row' : False, 'col' : False},
         category_orders={"qc_pass": ["QC Pass", "QC Fail", "Seq Fail", "POS", "NEG", "Blank"]}) 
         # color=(
         #     (plate_qc.COG-UK_identifier.str.match("^NEG") < df.y) & (df.y < df.upper_limit)).astype('int'),
@@ -130,7 +127,7 @@ def main():
                           
     fig.write_image(f'{args.experiment}.png', width=1980, height=1080,scale=1)
     fig.write_html(f'{args.experiment}.html')
-
+    print(f'\nSaved QC files to {args.experiment}_NEG/POS/BLANKS.csv\n')
     print(f'\nSaved PNG QC plate maps to:    {args.experiment}.png\nSaved interactive HTML PNG QC plate maps to:  {args.experiment}.html')
 
 if __name__ == "__main__":
