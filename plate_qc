@@ -50,7 +50,7 @@ def main():
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna()), "qc_pass"] = "Seq Fail"
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NEG"), "qc_pass"] = "NEG"
     plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^POS"), "qc_pass"] = "POS"
-    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK"), "qc_pass"] = "Blank"
+    plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^BLANK", case = False), "qc_pass"] = "Blank"
     plate_qc["num_aligned_reads"] = plate_qc["num_aligned_reads"].fillna(0)
     plate_qc.sort_values(axis = 0, by = "NORT PLATE", inplace = True)
     seq_fails = len(plate_qc.loc[plate_qc["COG-UK_identifier"].str.match("^NORT") & (plate_qc["qc_pass"].isna())])
