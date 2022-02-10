@@ -31,9 +31,10 @@ def main():
         return 1
  
     sample_sheet[["Lab ID","COG-UK_identifier"]] = sample_sheet[["Lab ID","COG-UK_identifier"]].replace("_", "-", regex = True)
-    sample_sheet[["Lab ID","COG-UK_identifier"]] = sample_sheet[["Lab ID","COG-UK_identifier"]].str.upper()
+    sample_sheet["Lab ID"] = sample_sheet["Lab ID"].str.upper()
+    sample_sheet["COG-UK_identifier"] = sample_sheet["COG-UK_identifier"].str.upper()
     qc[["sample_name"]] = qc[["sample_name"]].replace("_", "-", regex = True)
-    qc[["sample_name"]] = qc[["sample_name"]].str.upper()
+    qc["sample_name"] = qc["sample_name"].str.upper()
     plate_qc = pd.merge(qc, sample_sheet, how = "outer", left_on = "sample_name", right_on = "COG-UK_identifier", indicator = "merged")
     
     if len(plate_qc.loc[plate_qc["merged"] == "both"]) != len(qc):
