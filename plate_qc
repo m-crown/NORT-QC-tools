@@ -37,7 +37,7 @@ def main():
     qc["sample_name"] = qc["sample_name"].str.upper()
     plate_qc = pd.merge(qc, sample_sheet, how = "outer", left_on = "sample_name", right_on = "COG-UK_identifier", indicator = "merged")
     
-    if len(plate_qc.loc[plate_qc["merged"] == "both"]) != len(qc):
+    if len(plate_qc.loc[plate_qc["merged"] == "left_only"]) != 0:
         print("FATAL: Merging failed, the following QC sample_ids could not be matched to IDs in the sample sheet (sample_id from QC, COG-UK_identifier from sample sheet, merge = left_only is only in QC):")
         print(plate_qc.loc[plate_qc["merged"] == "left_only", ["sample_name", "COG-UK_identifier", "merged"]])
         return 1 #if there are left_only items then we need to stop and check, right only we just print below as these are seq fails. 
